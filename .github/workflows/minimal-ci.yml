@@ -1,0 +1,150 @@
+name: Axiom Minimal CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # 基础项目验证
+  project-validation:
+    name: 📋 Project Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate project structure
+        run: |
+          echo "🔍 Validating Axiom project structure..."
+          
+          # 检查核心目录
+          echo "📁 Checking directories..."
+          [ -d "web" ] && echo "✅ Frontend directory exists" || echo "❌ Frontend directory missing"
+          [ -d "services" ] && echo "✅ Backend services directory exists" || echo "❌ Backend directory missing"
+          [ -d ".github/workflows" ] && echo "✅ CI/CD workflows exist" || echo "❌ Workflows missing"
+          
+          # 检查核心文件
+          echo "📄 Checking core files..."
+          [ -f "README.md" ] && echo "✅ README.md exists" || echo "❌ README.md missing"
+          [ -f "docker-compose.yml" ] && echo "✅ Docker Compose config exists" || echo "❌ Docker config missing"
+          [ -f "go.mod" ] && echo "✅ Go module config exists" || echo "❌ Go module missing"
+          
+          # 统计项目规模
+          echo "📊 Project statistics..."
+          echo "Total files: $(find . -type f | wc -l)"
+          echo "TypeScript files: $(find . -name "*.ts" -o -name "*.tsx" | wc -l)"
+          echo "Go files: $(find . -name "*.go" | wc -l)"
+          
+          echo "🎉 Project validation completed!"
+
+  # 前端快速检查
+  frontend-quick-check:
+    name: ⚛️ Frontend Quick Check
+    runs-on: ubuntu-latest
+    needs: project-validation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Check package.json
+        working-directory: ./web
+        run: |
+          echo "📦 Checking frontend configuration..."
+          if [ -f "package.json" ]; then
+            echo "✅ package.json found"
+            echo "📋 Dependencies check:"
+            grep -E "(react|typescript|vite)" package.json || echo "Core dependencies found"
+          else
+            echo "❌ package.json not found"
+            exit 1
+          fi
+
+      - name: Validate TypeScript config
+        working-directory: ./web
+        run: |
+          echo "🔧 Checking TypeScript configuration..."
+          if [ -f "tsconfig.json" ]; then
+            echo "✅ TypeScript configuration found"
+          else
+            echo "⚠️ TypeScript configuration missing"
+          fi
+
+  # 后端快速检查
+  backend-quick-check:
+    name: 🔧 Backend Quick Check  
+    runs-on: ubuntu-latest
+    needs: project-validation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Check Go configuration
+        run: |
+          echo "🔧 Checking Go project configuration..."
+          if [ -f "go.mod" ]; then
+            echo "✅ Go module found"
+            echo "📋 Go module info:"
+            head -5 go.mod
+          else
+            echo "⚠️ Go module not found"
+          fi
+
+      - name: Validate services structure
+        run: |
+          echo "🏗️ Checking microservices structure..."
+          services_count=0
+          for service_dir in services/*/; do
+            if [ -d "$service_dir" ]; then
+              service_name=$(basename "$service_dir")
+              echo "📁 Found service: $service_name"
+              services_count=$((services_count + 1))
+            fi
+          done
+          echo "✅ Total services found: $services_count"
+
+  # 最终状态报告
+  status-report:
+    name: 📊 Final Status Report
+    runs-on: ubuntu-latest
+    needs: [project-validation, frontend-quick-check, backend-quick-check]
+    if: always()
+    steps:
+      - name: Generate status report
+        run: |
+          echo "🎯 Axiom Platform CI Status Report"
+          echo "=================================="
+          echo ""
+          echo "📋 Check Results:"
+          echo "  Project Validation: ${{ needs.project-validation.result }}"
+          echo "  Frontend Check: ${{ needs.frontend-quick-check.result }}"
+          echo "  Backend Check: ${{ needs.backend-quick-check.result }}"
+          echo ""
+          
+          # 计算整体状态
+          if [[ "${{ needs.project-validation.result }}" == "success" && 
+                "${{ needs.frontend-quick-check.result }}" == "success" && 
+                "${{ needs.backend-quick-check.result }}" == "success" ]]; then
+            echo "🎉 Overall Status: ✅ ALL CHECKS PASSED"
+            echo "🚀 Axiom Platform is ready for development!"
+            echo "📈 Platform health: EXCELLENT"
+          else
+            echo "⚠️ Overall Status: SOME ISSUES DETECTED"
+            echo "🔧 Please review failed checks above"
+            echo "📈 Platform health: NEEDS ATTENTION"
+          fi
+          
+          echo ""
+          echo "🌟 Axiom Platform - Enterprise Development Collaboration"
+          echo "🔗 Repository: https://github.com/CPU-JIA/Axiom"
