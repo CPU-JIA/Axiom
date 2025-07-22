@@ -1,0 +1,222 @@
+name: Axiom Platform CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: cpu-jia/axiom
+
+jobs:
+  # 代码质量检查
+  quality-check:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd web
+          npm ci
+
+      - name: ESLint check
+        run: |
+          cd web
+          npm run lint
+
+      - name: TypeScript check
+        run: |
+          cd web
+          npm run typecheck
+
+      - name: Security audit
+        run: |
+          cd web
+          npm audit --audit-level=high
+
+  # 前端构建和测试
+  frontend-build:
+    name: Frontend Build & Test
+    runs-on: ubuntu-latest
+    needs: quality-check
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd web
+          npm ci
+
+      - name: Build application
+        run: |
+          cd web
+          npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: web/dist/
+          retention-days: 7
+
+  # 后端构建和测试
+  backend-build:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+    needs: quality-check
+    strategy:
+      matrix:
+        service: [api-gateway, iam-service, tenant-service, project-service, cicd-service, git-service]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache-dependency-path: services/${{ matrix.service }}/go.sum
+
+      - name: Build service
+        run: |
+          cd services/${{ matrix.service }}
+          go build -v ./...
+
+      - name: Run tests
+        run: |
+          cd services/${{ matrix.service }}
+          go test -v ./...
+
+      - name: Go security check
+        uses: securecodewarrior/github-action-gosec@master
+        with:
+          args: './services/${{ matrix.service }}/...'
+
+  # Docker 镜像构建
+  docker-build:
+    name: Docker Images Build
+    runs-on: ubuntu-latest
+    needs: [frontend-build, backend-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./web
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # 部署到开发环境
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.ref == 'refs/heads/develop'
+    environment: development
+    steps:
+      - name: Deploy to development cluster
+        run: |
+          echo "部署到开发环境"
+          # kubectl apply -f configs/kubernetes/dev/
+
+  # 部署到生产环境
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Deploy to production cluster
+        run: |
+          echo "部署到生产环境"
+          # kubectl apply -f configs/kubernetes/prod/
+
+  # 性能测试
+  performance-test:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - name: Run performance tests
+        run: |
+          echo "执行性能测试"
+          # lighthouse CI 或其他性能测试工具
+
+  # 安全扫描
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: docker-build
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # 发布通知
+  notification:
+    name: Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-dev, deploy-prod]
+    if: always()
+    steps:
+      - name: Notify deployment status
+        run: |
+          if [[ "${{ needs.deploy-prod.result }}" == "success" ]]; then
+            echo "🚀 Axiom平台已成功部署到生产环境！"
+          elif [[ "${{ needs.deploy-dev.result }}" == "success" ]]; then
+            echo "✅ Axiom平台已成功部署到开发环境！"
+          else
+            echo "❌ 部署失败，请检查日志"
+          fi

@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: cpu-jia/axiom
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get tag
+        id: tag
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd web
+          npm ci
+          npm run build
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build all services
+        run: |
+          mkdir -p dist/services
+          for service in api-gateway iam-service tenant-service project-service cicd-service git-service; do
+            cd services/$service
+            GOOS=linux GOARCH=amd64 go build -o ../../dist/services/$service ./cmd/main.go
+            cd ../..
+          done
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push release images
+        run: |
+          # 构建前端镜像
+          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.tag.outputs.tag }} ./web
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.tag.outputs.tag }}
+          
+          # 构建后端服务镜像
+          for service in api-gateway iam-service tenant-service project-service cicd-service git-service; do
+            docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-$service:${{ steps.tag.outputs.tag }} -f services/$service/Dockerfile .
+            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-$service:${{ steps.tag.outputs.tag }}
+          done
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"* %s (%an)" > CHANGELOG.txt
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat CHANGELOG.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          release_name: Axiom Platform ${{ steps.tag.outputs.tag }}
+          body: |
+            ## What's Changed
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ## Docker Images
+            - Frontend: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ steps.tag.outputs.tag }}`
+            - API Gateway: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-api-gateway:${{ steps.tag.outputs.tag }}`
+            - IAM Service: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-iam-service:${{ steps.tag.outputs.tag }}`
+            - Tenant Service: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-tenant-service:${{ steps.tag.outputs.tag }}`
+            - Project Service: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-project-service:${{ steps.tag.outputs.tag }}`
+            - CI/CD Service: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-cicd-service:${{ steps.tag.outputs.tag }}`
+            - Git Service: `${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-git-service:${{ steps.tag.outputs.tag }}`
+            
+            ## Deployment
+            ```bash
+            # 使用Helm部署
+            helm upgrade --install axiom ./configs/helm/axiom \
+              --set image.tag=${{ steps.tag.outputs.tag }} \
+              --namespace axiom-system \
+              --create-namespace
+            ```
+          draft: false
+          prerelease: false
