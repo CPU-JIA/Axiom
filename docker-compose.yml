@@ -1,0 +1,330 @@
+version: '3.8'
+
+services:
+  # 数据库服务
+  postgres:
+    image: postgres:15-alpine
+    container_name: cloud-platform-db
+    environment:
+      POSTGRES_DB: euclid_elements
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      # 创建额外的数据库
+      POSTGRES_MULTIPLE_DATABASES: euclid_elements_dev,euclid_elements_test,gitea
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+      - ./shared/database/scripts:/scripts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d euclid_elements"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: cloud-platform-cache
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Kafka消息队列
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: cloud-platform-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: cloud-platform-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+
+  # Web前端应用
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: cloud-platform-web
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API网关服务
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: cloud-platform-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=euclid_elements
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=dev-root-token
+    depends_on:
+      - postgres
+      - redis
+      - vault
+    restart: unless-stopped
+
+  # IAM身份认证服务
+  iam-service:
+    build:
+      context: ./services/iam-service
+      dockerfile: Dockerfile
+    container_name: cloud-platform-iam
+    ports:
+      - "8081:8080"
+    environment:
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=euclid_elements
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # 租户管理服务
+  tenant-service:
+    build:
+      context: ./services/tenant-service
+      dockerfile: Dockerfile
+    container_name: cloud-platform-tenant
+    ports:
+      - "8082:8080"
+    environment:
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=euclid_elements
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # 项目管理服务
+  project-service:
+    build:
+      context: ./services/project-service
+      dockerfile: Dockerfile
+    container_name: cloud-platform-project
+    ports:
+      - "8083:8080"
+    environment:
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=euclid_elements
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # CI/CD服务
+  cicd-service:
+    build:
+      context: ./services/cicd-service
+      dockerfile: Dockerfile
+    container_name: cloud-platform-cicd
+    ports:
+      - "8084:8080"
+    environment:
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=euclid_elements
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # Git网关服务
+  git-gateway-service:
+    build:
+      context: ./services/git-gateway-service
+      dockerfile: Dockerfile
+    container_name: cloud-platform-git-gateway
+    ports:
+      - "8085:8080"
+    environment:
+      - GIN_MODE=release
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=euclid_elements
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GITEA_URL=http://gitea:3000
+    depends_on:
+      - postgres
+      - redis
+      - gitea
+    restart: unless-stopped
+
+  # Gitea Git服务
+  gitea:
+    image: gitea/gitea:latest
+    container_name: cloud-platform-git
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=postgres:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=postgres
+      - GITEA__database__PASSWD=password
+    restart: always
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    volumes:
+      - gitea_data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - postgres
+
+  # MinIO对象存储
+  minio:
+    image: minio/minio:latest
+    container_name: cloud-platform-storage
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+
+  # Vault密钥管理
+  vault:
+    image: vault:latest
+    container_name: cloud-platform-vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    cap_add:
+      - IPC_LOCK
+
+  # Prometheus监控
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: cloud-platform-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+
+  # Grafana仪表盘
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cloud-platform-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/monitoring/grafana:/etc/grafana/provisioning
+
+  # Jaeger分布式追踪
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: cloud-platform-jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      COLLECTOR_ZIPKIN_HTTP_PORT: 9411
+
+  # ElasticSearch (日志存储)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
+    container_name: cloud-platform-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+
+volumes:
+  postgres_data:
+  redis_data:
+  gitea_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+  elasticsearch_data:
+
+networks:
+  default:
+    name: cloud-platform-net

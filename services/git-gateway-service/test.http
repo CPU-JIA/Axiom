@@ -1,0 +1,269 @@
+# Git Gateway服务 API 测试
+
+# 设置基础URL和认证信息
+@baseUrl = http://localhost:8004
+@contentType = application/json
+@authToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+### 健康检查
+GET {{baseUrl}}/health
+
+### ===== 仓库管理 =====
+
+### 创建仓库
+POST {{baseUrl}}/api/v1/repositories
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "project_id": "550e8400-e29b-41d4-a716-446655440001",
+  "name": "euclid-elements",
+  "description": "几何原本智能开发协作平台",
+  "visibility": "private",
+  "default_branch": "main",
+  "language": "Go",
+  "topics": ["collaboration", "development", "git"],
+  "settings": {
+    "allow_push": true,
+    "allow_force_push": false,
+    "allow_deletions": false,
+    "require_signed_commits": true,
+    "enable_lfs": true,
+    "enable_issues": true,
+    "enable_wiki": true,
+    "auto_delete_branch": false,
+    "default_merge_method": "merge"
+  }
+}
+
+### 获取仓库列表
+GET {{baseUrl}}/api/v1/repositories?project_id=550e8400-e29b-41d4-a716-446655440001&page=1&limit=10
+Authorization: {{authToken}}
+
+### 获取仓库详情
+GET {{baseUrl}}/api/v1/repositories/550e8400-e29b-41d4-a716-446655440101
+Authorization: {{authToken}}
+
+### 根据项目ID和名称获取仓库
+GET {{baseUrl}}/api/v1/repositories/project/550e8400-e29b-41d4-a716-446655440001/name/euclid-elements
+Authorization: {{authToken}}
+
+### 更新仓库
+PUT {{baseUrl}}/api/v1/repositories/550e8400-e29b-41d4-a716-446655440101
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "description": "更新后的仓库描述",
+  "visibility": "internal",
+  "topics": ["collaboration", "development", "git", "enterprise"]
+}
+
+### 获取仓库统计信息
+GET {{baseUrl}}/api/v1/repositories/550e8400-e29b-41d4-a716-446655440101/stats
+Authorization: {{authToken}}
+
+### 更新仓库统计信息
+POST {{baseUrl}}/api/v1/repositories/550e8400-e29b-41d4-a716-446655440101/stats
+Authorization: {{authToken}}
+
+### ===== 分支管理 =====
+
+### 创建分支
+POST {{baseUrl}}/api/v1/branches
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "repository_id": "550e8400-e29b-41d4-a716-446655440101",
+  "name": "feature/user-authentication",
+  "commit_sha": "1234567890abcdef1234567890abcdef12345678",
+  "is_protected": false
+}
+
+### 获取分支列表
+GET {{baseUrl}}/api/v1/branches?repository_id=550e8400-e29b-41d4-a716-446655440101&page=1&limit=10
+Authorization: {{authToken}}
+
+### 获取分支详情
+GET {{baseUrl}}/api/v1/branches/550e8400-e29b-41d4-a716-446655440201
+Authorization: {{authToken}}
+
+### 根据仓库ID和名称获取分支
+GET {{baseUrl}}/api/v1/branches/repository/550e8400-e29b-41d4-a716-446655440101/name/main
+Authorization: {{authToken}}
+
+### 更新分支
+PUT {{baseUrl}}/api/v1/branches/550e8400-e29b-41d4-a716-446655440201
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "commit_sha": "abcdef1234567890abcdef1234567890abcdef12",
+  "is_protected": true
+}
+
+### 设置分支保护
+POST {{baseUrl}}/api/v1/branches/550e8400-e29b-41d4-a716-446655440201/protection
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "require_status_checks": true,
+  "require_up_to_date": true,
+  "require_pull_request": true,
+  "require_code_owner_reviews": true,
+  "dismiss_stale_reviews": false,
+  "required_reviewers": 2,
+  "restrict_pushes": true,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+
+### 移除分支保护
+DELETE {{baseUrl}}/api/v1/branches/550e8400-e29b-41d4-a716-446655440201/protection
+Authorization: {{authToken}}
+
+### 设置默认分支
+POST {{baseUrl}}/api/v1/repositories/550e8400-e29b-41d4-a716-446655440101/branches/550e8400-e29b-41d4-a716-446655440201/default
+Authorization: {{authToken}}
+
+### ===== Webhook管理 =====
+
+### 创建Webhook
+POST {{baseUrl}}/api/v1/webhooks
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "repository_id": "550e8400-e29b-41d4-a716-446655440101",
+  "url": "https://hooks.example.com/git-webhook",
+  "secret": "webhook-secret-key",
+  "content_type": "application/json",
+  "events": ["push", "branch_create", "branch_delete", "tag_create"],
+  "is_active": true,
+  "ssl_verify": true
+}
+
+### 获取Webhook列表
+GET {{baseUrl}}/api/v1/webhooks?repository_id=550e8400-e29b-41d4-a716-446655440101&page=1&limit=10
+Authorization: {{authToken}}
+
+### 获取Webhook详情
+GET {{baseUrl}}/api/v1/webhooks/550e8400-e29b-41d4-a716-446655440301
+Authorization: {{authToken}}
+
+### 更新Webhook
+PUT {{baseUrl}}/api/v1/webhooks/550e8400-e29b-41d4-a716-446655440301
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "url": "https://hooks.example.com/updated-webhook",
+  "events": ["push", "pull_request", "issue"],
+  "is_active": false
+}
+
+### 触发Webhook测试
+POST {{baseUrl}}/api/v1/webhooks/repositories/550e8400-e29b-41d4-a716-446655440101/trigger
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "event_type": "push",
+  "payload": {
+    "ref": "refs/heads/main",
+    "before": "0000000000000000000000000000000000000000",
+    "after": "1234567890abcdef1234567890abcdef12345678",
+    "commits": [
+      {
+        "id": "1234567890abcdef1234567890abcdef12345678",
+        "message": "Initial commit",
+        "author": {
+          "name": "Developer",
+          "email": "dev@example.com"
+        }
+      }
+    ]
+  }
+}
+
+### ===== 访问密钥管理 =====
+
+### 验证公钥格式
+POST {{baseUrl}}/api/v1/access-keys/validate
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC... user@example.com"
+}
+
+### 创建访问密钥
+POST {{baseUrl}}/api/v1/access-keys
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "repository_id": "550e8400-e29b-41d4-a716-446655440101",
+  "user_id": "550e8400-e29b-41d4-a716-446655440002",
+  "title": "开发环境SSH密钥",
+  "public_key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC... user@example.com",
+  "access_level": "write"
+}
+
+### 获取访问密钥列表
+GET {{baseUrl}}/api/v1/access-keys?user_id=550e8400-e29b-41d4-a716-446655440002&page=1&limit=10
+Authorization: {{authToken}}
+
+### 获取访问密钥详情
+GET {{baseUrl}}/api/v1/access-keys/550e8400-e29b-41d4-a716-446655440401
+Authorization: {{authToken}}
+
+### 更新访问密钥
+PUT {{baseUrl}}/api/v1/access-keys/550e8400-e29b-41d4-a716-446655440401
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "title": "更新的SSH密钥",
+  "access_level": "read"
+}
+
+### ===== Git操作审计 =====
+
+### 获取操作记录列表
+GET {{baseUrl}}/api/v1/operations?repository_id=550e8400-e29b-41d4-a716-446655440101&page=1&limit=20
+Authorization: {{authToken}}
+
+### 获取操作记录详情
+GET {{baseUrl}}/api/v1/operations/550e8400-e29b-41d4-a716-446655440501
+Authorization: {{authToken}}
+
+### 获取操作统计信息
+GET {{baseUrl}}/api/v1/operations/stats?repository_id=550e8400-e29b-41d4-a716-446655440101&group_by=day
+Authorization: {{authToken}}
+
+### 按时间范围查询操作记录
+GET {{baseUrl}}/api/v1/operations?start_time=2024-01-01T00:00:00Z&end_time=2024-12-31T23:59:59Z&operation=push
+Authorization: {{authToken}}
+
+### 清理旧的操作记录 (管理员功能)
+DELETE {{baseUrl}}/api/v1/operations/cleanup?retention_days=90
+Authorization: {{authToken}}
+
+### 删除访问密钥
+DELETE {{baseUrl}}/api/v1/access-keys/550e8400-e29b-41d4-a716-446655440401
+Authorization: {{authToken}}
+
+### 删除Webhook
+DELETE {{baseUrl}}/api/v1/webhooks/550e8400-e29b-41d4-a716-446655440301
+Authorization: {{authToken}}
+
+### 删除分支
+DELETE {{baseUrl}}/api/v1/branches/550e8400-e29b-41d4-a716-446655440201
+Authorization: {{authToken}}
+
+### 删除仓库
+DELETE {{baseUrl}}/api/v1/repositories/550e8400-e29b-41d4-a716-446655440101
+Authorization: {{authToken}}

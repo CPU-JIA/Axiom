@@ -1,0 +1,336 @@
+# 项目任务管理服务 API 测试
+
+# 设置基础URL和认证信息
+@baseUrl = http://localhost:8003
+@contentType = application/json
+@authToken = Bearer your-jwt-token-here
+
+### 健康检查
+GET {{baseUrl}}/health
+
+### ===== 项目管理 =====
+
+### 创建项目
+POST {{baseUrl}}/api/v1/projects
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "name": "几何原本开发项目",
+  "key": "GEOM",
+  "description": "企业级智能开发协作平台项目",
+  "manager_id": "550e8400-e29b-41d4-a716-446655440000",
+  "settings": {
+    "task_number_prefix": "GEOM",
+    "allow_guest_comments": false,
+    "auto_archive_sprints": true,
+    "workflow_settings": {
+      "auto_move_to_in_progress": true,
+      "require_comment_on_move": false,
+      "allowed_transitions": ["todo->in_progress", "in_progress->done", "done->todo"]
+    }
+  }
+}
+
+### 获取项目列表
+GET {{baseUrl}}/api/v1/projects?page=1&limit=10&sort_by=created_at&sort_desc=true
+Authorization: {{authToken}}
+
+### 获取项目详情
+GET {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001
+Authorization: {{authToken}}
+
+### 根据项目键获取项目
+GET {{baseUrl}}/api/v1/projects/key/GEOM
+Authorization: {{authToken}}
+
+### 更新项目
+PUT {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "name": "几何原本开发项目(更新)",
+  "description": "更新后的项目描述",
+  "status": "active"
+}
+
+### 获取项目统计信息
+GET {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/stats
+Authorization: {{authToken}}
+
+### 获取项目设置
+GET {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/settings
+Authorization: {{authToken}}
+
+### 更新项目设置
+PUT {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/settings
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "task_number_prefix": "GEOM",
+  "allow_guest_comments": true,
+  "auto_archive_sprints": true,
+  "notification_settings": {
+    "task_assigned": true,
+    "sprint_started": true,
+    "sprint_completed": true
+  },
+  "workflow_settings": {
+    "auto_move_to_in_progress": true,
+    "require_comment_on_move": true,
+    "allowed_transitions": ["todo->in_progress", "in_progress->done", "done->todo"]
+  }
+}
+
+### ===== 项目成员管理 =====
+
+### 获取项目成员列表
+GET {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/members
+Authorization: {{authToken}}
+
+### 添加项目成员
+POST {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/members
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "user_id": "550e8400-e29b-41d4-a716-446655440002",
+  "role_id": "550e8400-e29b-41d4-a716-446655440010"
+}
+
+### 更新项目成员角色
+PUT {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/members/550e8400-e29b-41d4-a716-446655440002/role
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "role_id": "550e8400-e29b-41d4-a716-446655440011"
+}
+
+### 移除项目成员
+DELETE {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/members/550e8400-e29b-41d4-a716-446655440002
+Authorization: {{authToken}}
+
+### ===== 任务管理 =====
+
+### 创建任务
+POST {{baseUrl}}/api/v1/tasks
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "project_id": "550e8400-e29b-41d4-a716-446655440001",
+  "title": "实现用户认证模块",
+  "description": "实现JWT认证、多因子认证等功能",
+  "assignee_id": "550e8400-e29b-41d4-a716-446655440002",
+  "due_date": "2024-08-15T00:00:00Z",
+  "priority": "high",
+  "story_points": 8,
+  "tags": ["backend", "authentication", "security"],
+  "custom_fields": {
+    "complexity": "high",
+    "technology": "Go, JWT, TOTP"
+  }
+}
+
+### 获取任务列表
+GET {{baseUrl}}/api/v1/tasks?project_id=550e8400-e29b-41d4-a716-446655440001&page=1&limit=20&sort_by=created_at&sort_desc=true
+Authorization: {{authToken}}
+
+### 根据任务编号获取任务
+GET {{baseUrl}}/api/v1/tasks/number/550e8400-e29b-41d4-a716-446655440001/1
+Authorization: {{authToken}}
+
+### 获取任务详情
+GET {{baseUrl}}/api/v1/tasks/550e8400-e29b-41d4-a716-446655440100
+Authorization: {{authToken}}
+
+### 更新任务
+PUT {{baseUrl}}/api/v1/tasks/550e8400-e29b-41d4-a716-446655440100
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "title": "实现用户认证模块(更新)",
+  "description": "实现JWT认证、多因子认证、单点登录等功能",
+  "priority": "urgent",
+  "story_points": 13,
+  "tags": ["backend", "authentication", "security", "sso"]
+}
+
+### 更新任务状态
+PUT {{baseUrl}}/api/v1/tasks/550e8400-e29b-41d4-a716-446655440100/status
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "status_id": "550e8400-e29b-41d4-a716-446655440200",
+  "comment": "开始开发，已完成技术调研"
+}
+
+### 分配任务
+PUT {{baseUrl}}/api/v1/tasks/550e8400-e29b-41d4-a716-446655440100/assign
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "assignee_id": "550e8400-e29b-41d4-a716-446655440003"
+}
+
+### 移动任务到迭代
+PUT {{baseUrl}}/api/v1/tasks/550e8400-e29b-41d4-a716-446655440100/sprint
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "sprint_id": "550e8400-e29b-41d4-a716-446655440300"
+}
+
+### 创建子任务
+POST {{baseUrl}}/api/v1/tasks/550e8400-e29b-41d4-a716-446655440100/subtasks
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "title": "设计JWT认证接口",
+  "description": "设计登录、注册、刷新token等接口",
+  "assignee_id": "550e8400-e29b-41d4-a716-446655440002",
+  "due_date": "2024-08-10T00:00:00Z",
+  "priority": "high"
+}
+
+### 获取子任务列表
+GET {{baseUrl}}/api/v1/tasks/550e8400-e29b-41d4-a716-446655440100/subtasks
+Authorization: {{authToken}}
+
+### 更新任务顺序（看板拖拽）
+PUT {{baseUrl}}/api/v1/tasks/550e8400-e29b-41d4-a716-446655440100/order
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "status_id": "550e8400-e29b-41d4-a716-446655440201",
+  "position": 2
+}
+
+### ===== 看板管理 =====
+
+### 获取项目看板
+GET {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/kanban
+Authorization: {{authToken}}
+
+### 获取迭代看板
+GET {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/kanban?sprint_id=550e8400-e29b-41d4-a716-446655440300
+Authorization: {{authToken}}
+
+### 获取项目任务
+GET {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/tasks?sprint_id=550e8400-e29b-41d4-a716-446655440300
+Authorization: {{authToken}}
+
+### ===== 迭代管理 =====
+
+### 创建迭代
+POST {{baseUrl}}/api/v1/sprints
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "project_id": "550e8400-e29b-41d4-a716-446655440001",
+  "name": "Sprint 1 - 用户认证",
+  "goal": "完成用户认证相关功能开发",
+  "start_date": "2024-08-01T00:00:00Z",
+  "end_date": "2024-08-14T23:59:59Z"
+}
+
+### 获取迭代列表
+GET {{baseUrl}}/api/v1/sprints?project_id=550e8400-e29b-41d4-a716-446655440001&page=1&limit=20
+Authorization: {{authToken}}
+
+### 获取项目迭代
+GET {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/sprints?status=active
+Authorization: {{authToken}}
+
+### 获取活跃迭代
+GET {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/sprints/active
+Authorization: {{authToken}}
+
+### 获取迭代详情
+GET {{baseUrl}}/api/v1/sprints/550e8400-e29b-41d4-a716-446655440300
+Authorization: {{authToken}}
+
+### 更新迭代
+PUT {{baseUrl}}/api/v1/sprints/550e8400-e29b-41d4-a716-446655440300
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "name": "Sprint 1 - 用户认证(更新)",
+  "goal": "完成用户认证相关功能开发，包括多因子认证",
+  "end_date": "2024-08-16T23:59:59Z"
+}
+
+### 开始迭代
+POST {{baseUrl}}/api/v1/sprints/550e8400-e29b-41d4-a716-446655440300/start
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{}
+
+### 完成迭代
+POST {{baseUrl}}/api/v1/sprints/550e8400-e29b-41d4-a716-446655440300/complete
+Content-Type: {{contentType}}
+Authorization: {{authToken}}
+
+{
+  "move_unfinished_to": "550e8400-e29b-41d4-a716-446655440301",
+  "create_next_sprint": true,
+  "next_sprint_name": "Sprint 2 - 租户管理",
+  "next_sprint_start_date": "2024-08-15T00:00:00Z",
+  "next_sprint_end_date": "2024-08-28T23:59:59Z"
+}
+
+### ===== 报告和分析 =====
+
+### 获取迭代报告
+GET {{baseUrl}}/api/v1/sprints/550e8400-e29b-41d4-a716-446655440300/report
+Authorization: {{authToken}}
+
+### 获取燃尽图数据
+GET {{baseUrl}}/api/v1/sprints/550e8400-e29b-41d4-a716-446655440300/burndown
+Authorization: {{authToken}}
+
+### 获取速率图数据
+GET {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001/velocity?sprint_count=10
+Authorization: {{authToken}}
+
+### ===== 任务搜索和过滤 =====
+
+### 按分配人搜索任务
+GET {{baseUrl}}/api/v1/tasks?assignee_id=550e8400-e29b-41d4-a716-446655440002&page=1&limit=10
+Authorization: {{authToken}}
+
+### 按优先级搜索任务
+GET {{baseUrl}}/api/v1/tasks?priority=high&project_id=550e8400-e29b-41d4-a716-446655440001
+Authorization: {{authToken}}
+
+### 按关键词搜索任务
+GET {{baseUrl}}/api/v1/tasks?search=认证&project_id=550e8400-e29b-41d4-a716-446655440001
+Authorization: {{authToken}}
+
+### 按到期时间搜索任务
+GET {{baseUrl}}/api/v1/tasks?due_date_from=2024-08-01&due_date_to=2024-08-31&project_id=550e8400-e29b-41d4-a716-446655440001
+Authorization: {{authToken}}
+
+### 删除任务
+DELETE {{baseUrl}}/api/v1/tasks/550e8400-e29b-41d4-a716-446655440101
+Authorization: {{authToken}}
+
+### 删除迭代
+DELETE {{baseUrl}}/api/v1/sprints/550e8400-e29b-41d4-a716-446655440301
+Authorization: {{authToken}}
+
+### 删除项目
+DELETE {{baseUrl}}/api/v1/projects/550e8400-e29b-41d4-a716-446655440001
+Authorization: {{authToken}}

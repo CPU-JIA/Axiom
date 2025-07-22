@@ -1,0 +1,35 @@
+# 项目服务配置文件
+environment: development
+port: "8003"
+log_level: info
+
+# 数据库配置
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: password
+  dbname: euclid_elements
+  sslmode: disable
+
+# JWT配置
+jwt:
+  secret: your-jwt-secret-key-here
+  access_token_expiry: 3600
+
+# CORS配置
+cors:
+  allowed_origins:
+    - http://localhost:3000
+    - http://localhost:3001
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+  allowed_headers:
+    - Origin
+    - Content-Type
+    - Authorization
+    - X-Request-ID

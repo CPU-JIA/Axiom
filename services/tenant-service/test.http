@@ -1,0 +1,159 @@
+# Tenant Service API测试
+
+# 设置基础URL
+@baseUrl = http://localhost:8002
+@contentType = application/json
+@accessToken = your-access-token-here
+
+### 健康检查
+GET {{baseUrl}}/health
+
+### 就绪检查  
+GET {{baseUrl}}/health/ready
+
+### 存活检查
+GET {{baseUrl}}/health/live
+
+### 创建租户
+POST {{baseUrl}}/api/v1/tenants
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "my-awesome-team",
+  "display_name": "My Awesome Team",
+  "description": "This is our development team workspace",
+  "plan_type": "pro"
+}
+
+### 获取我的租户列表
+GET {{baseUrl}}/api/v1/tenants/my?page=1&size=10
+Authorization: Bearer {{accessToken}}
+
+### 获取租户信息
+GET {{baseUrl}}/api/v1/tenants/tenant-id-here
+Authorization: Bearer {{accessToken}}
+
+### 更新租户信息
+PUT {{baseUrl}}/api/v1/tenants/tenant-id-here
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "display_name": "Updated Team Name",
+  "description": "Updated description for our team",
+  "logo_url": "https://example.com/logo.png"
+}
+
+### 获取租户成员列表
+GET {{baseUrl}}/api/v1/tenants/tenant-id-here/members?page=1&size=20
+Authorization: Bearer {{accessToken}}
+
+### 邀请成员
+POST {{baseUrl}}/api/v1/tenants/tenant-id-here/members/invite
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "email": "newmember@example.com",
+  "role": "developer",
+  "message": "Welcome to our team!"
+}
+
+### 邀请管理员
+POST {{baseUrl}}/api/v1/tenants/tenant-id-here/members/invite
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "email": "admin@example.com",
+  "role": "admin"
+}
+
+### 邀请维护者
+POST {{baseUrl}}/api/v1/tenants/tenant-id-here/members/invite
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "email": "maintainer@example.com",
+  "role": "maintainer"
+}
+
+### 邀请访客
+POST {{baseUrl}}/api/v1/tenants/tenant-id-here/members/invite
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "email": "guest@example.com",
+  "role": "guest"
+}
+
+# 以下端点尚未实现，但已在路由中预留
+
+### 获取邀请列表（预留）
+# GET {{baseUrl}}/api/v1/tenants/tenant-id-here/invitations
+# Authorization: Bearer {{accessToken}}
+
+### 取消邀请（预留）
+# DELETE {{baseUrl}}/api/v1/tenants/tenant-id-here/invitations/invitation-id
+# Authorization: Bearer {{accessToken}}
+
+### 移除成员（预留）
+# DELETE {{baseUrl}}/api/v1/tenants/tenant-id-here/members/user-id
+# Authorization: Bearer {{accessToken}}
+
+### 更新成员角色（预留）
+# PUT {{baseUrl}}/api/v1/tenants/tenant-id-here/members/user-id/role
+# Content-Type: {{contentType}}
+# Authorization: Bearer {{accessToken}}
+# 
+# {
+#   "role": "maintainer"
+# }
+
+### 获取审计日志（预留）
+# GET {{baseUrl}}/api/v1/tenants/tenant-id-here/audit?page=1&size=50
+# Authorization: Bearer {{accessToken}}
+
+### 获取租户设置（预留）
+# GET {{baseUrl}}/api/v1/tenants/tenant-id-here/settings
+# Authorization: Bearer {{accessToken}}
+
+### 更新租户设置（预留）
+# PUT {{baseUrl}}/api/v1/tenants/tenant-id-here/settings
+# Content-Type: {{contentType}}
+# Authorization: Bearer {{accessToken}}
+# 
+# {
+#   "features": {
+#     "git_integration": true,
+#     "ci_cd": true,
+#     "wiki": false
+#   },
+#   "notifications": {
+#     "email_enabled": true,
+#     "slack_webhook": "https://hooks.slack.com/..."
+#   }
+# }
+
+### 查看邀请（公开端点，预留）
+# GET {{baseUrl}}/api/v1/invites/invitation-token-here
+
+### 接受邀请（预留）
+# POST {{baseUrl}}/api/v1/invites/invitation-token-here/accept
+# Content-Type: {{contentType}}
+# Authorization: Bearer {{accessToken}}
+
+### 拒绝邀请（预留）
+# POST {{baseUrl}}/api/v1/invites/invitation-token-here/decline
+# Content-Type: {{contentType}}
+
+### 内部API - 获取租户信息（预留）
+# GET {{baseUrl}}/api/v1/internal/tenants/tenant-id-here
+# X-Internal-Token: your-internal-secret
+
+### 内部API - 获取用户租户列表（预留）  
+# GET {{baseUrl}}/api/v1/internal/users/user-id-here/tenants
+# X-Internal-Token: your-internal-secret

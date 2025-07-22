@@ -1,0 +1,103 @@
+# CI/CD服务配置文件
+
+# 应用设置
+environment: development
+port: 8005
+log_level: info
+
+# 数据库配置
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: password
+  dbname: euclid_elements
+  sslmode: disable
+
+# JWT配置
+jwt:
+  secret: "your-super-secret-jwt-key-change-in-production"
+  access_token_expiry: 3600
+
+# CORS配置
+cors:
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:3001" 
+  allowed_methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "OPTIONS"
+  allowed_headers:
+    - "*"
+
+# Kubernetes配置
+kubernetes:
+  config_path: ""          # 留空使用默认kubeconfig
+  in_cluster: false        # 集群内部署时设为true
+  namespace: "cicd"
+  service_account: "cicd-service"
+  image_pull_secret: ""
+
+# Tekton配置
+tekton:
+  namespace: "tekton-pipelines"
+  default_timeout: 3600           # 默认超时时间(秒)
+  pipeline_run_ttl: 168          # PipelineRun保留时间(小时) - 7天
+  task_run_ttl: 24               # TaskRun保留时间(小时) - 1天  
+  max_concurrent_runs: 10        # 最大并发运行数
+  resource_quota:
+    default_cpu: "100m"
+    default_memory: "128Mi"
+    max_cpu: "2"
+    max_memory: "4Gi"
+
+# 存储配置
+storage:
+  type: "local"                  # local, s3, nfs
+  local_path: "/data/cicd"
+  retention_days: 30
+  # S3配置(当type为s3时使用)
+  # s3:
+  #   endpoint: "s3.amazonaws.com"
+  #   region: "us-west-2"
+  #   bucket: "cicd-storage"
+  #   access_key_id: ""
+  #   secret_access_key: ""
+  #   use_ssl: true
+
+# 缓存配置
+cache:
+  type: "local"                  # local, redis, memory
+  redis_url: ""                  # Redis连接URL
+  local_path: "/data/cache"
+  max_size_gb: 10               # 最大缓存大小(GB)
+  ttl_hours: 168                # 缓存过期时间(小时) - 7天
+  cleanup_interval: 60          # 清理间隔(分钟)
+
+# 日志配置
+logging:
+  level: "info"
+  format: "json"                # json, text
+  output: "stdout"              # stdout, file
+  file_path: "/logs/cicd.log"
+  max_size: 100                 # 最大文件大小(MB)
+  max_backups: 3               # 最大备份数
+  max_age: 28                  # 最大保留天数
+  compress: true               # 是否压缩
+  enable_console: true         # 启用控制台输出
+
+# 通知配置
+notification:
+  webhook_url: ""              # Webhook通知URL
+  slack_token: ""              # Slack Bot Token
+  email_smtp:
+    host: ""
+    port: 587
+    username: ""
+    password: ""
+    from: ""
+    use_tls: true
+  enabled_channels: []         # 启用的通知渠道

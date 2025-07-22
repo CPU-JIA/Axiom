@@ -1,0 +1,38 @@
+environment: development
+port: "8004"
+log_level: info
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: password
+  dbname: euclid_elements
+  sslmode: disable
+
+jwt:
+  secret: git-gateway-jwt-secret-key-2024
+  access_token_expiry: 3600
+
+cors:
+  allowed_origins: ["*"]
+  allowed_methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  allowed_headers: ["*"]
+
+git:
+  repository_root: "/data/repositories"
+  enable_http: true
+  enable_ssh: true
+  ssh_port: "2222"
+  ssh_host_key: "/etc/ssh/ssh_host_rsa_key"
+  max_file_size: 100  # MB
+  max_repository_size: 2048  # MB
+  enable_lfs: true
+  lfs_storage: "/data/lfs"
+
+webhook:
+  max_retries: 3
+  retry_interval: 60  # seconds
+  timeout: 30  # seconds
+  max_payload_size: 1024  # KB
+  enable_signature: true

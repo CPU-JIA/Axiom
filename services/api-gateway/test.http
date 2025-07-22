@@ -1,0 +1,143 @@
+# API Gateway测试
+
+# 设置基础URL
+@baseUrl = http://localhost:8000
+@contentType = application/json
+@accessToken = your-access-token-here
+
+### API Gateway信息
+GET {{baseUrl}}/
+
+### 健康检查
+GET {{baseUrl}}/health
+
+### 就绪检查
+GET {{baseUrl}}/health/ready
+
+### 存活检查
+GET {{baseUrl}}/health/live
+
+### 所有服务状态
+GET {{baseUrl}}/health/services
+
+### 单个服务健康检查
+GET {{baseUrl}}/health/services/iam-service
+
+### 监控指标（需要启用metrics）
+GET http://localhost:9090/metrics
+
+# =============================================================================
+# 通过API Gateway访问后端服务
+# =============================================================================
+
+### 用户注册 (通过Gateway -> IAM服务)
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "password123",
+  "display_name": "测试用户",
+  "tenant_name": "测试租户"
+}
+
+### 用户登录 (通过Gateway -> IAM服务)
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### 刷新Token (通过Gateway -> IAM服务)
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refresh_token": "your-refresh-token-here"
+}
+
+### 获取用户资料 (通过Gateway -> IAM服务，需要认证)
+GET {{baseUrl}}/api/v1/auth/profile
+Authorization: Bearer {{accessToken}}
+
+### 创建租户 (通过Gateway -> Tenant服务，需要认证)
+POST {{baseUrl}}/api/v1/tenants
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "name": "my-new-team",
+  "display_name": "My New Team",
+  "description": "This is our new development team",
+  "plan_type": "pro"
+}
+
+### 获取我的租户列表 (通过Gateway -> Tenant服务，需要认证)
+GET {{baseUrl}}/api/v1/tenants/my
+Authorization: Bearer {{accessToken}}
+
+### 获取租户信息 (通过Gateway -> Tenant服务，需要认证)
+GET {{baseUrl}}/api/v1/tenants/tenant-id-here
+Authorization: Bearer {{accessToken}}
+
+### 邀请成员 (通过Gateway -> Tenant服务，需要认证)
+POST {{baseUrl}}/api/v1/tenants/tenant-id-here/members/invite
+Content-Type: {{contentType}}
+Authorization: Bearer {{accessToken}}
+
+{
+  "email": "newmember@example.com",
+  "role": "developer",
+  "message": "Welcome to our team!"
+}
+
+# =============================================================================
+# 限流测试
+# =============================================================================
+
+### 大量请求测试限流 (快速多次执行此请求)
+GET {{baseUrl}}/health
+
+### 测试用户限流 (快速多次执行此请求)
+GET {{baseUrl}}/api/v1/tenants/my
+Authorization: Bearer {{accessToken}}
+
+# =============================================================================
+# 错误处理测试
+# =============================================================================
+
+### 无效路径
+GET {{baseUrl}}/api/v1/invalid/path
+
+### 无认证访问需要认证的端点
+GET {{baseUrl}}/api/v1/tenants/my
+
+### 无效Token
+GET {{baseUrl}}/api/v1/tenants/my
+Authorization: Bearer invalid-token
+
+### 后端服务不可用测试
+GET {{baseUrl}}/api/v1/unavailable/service
+
+# =============================================================================
+# CORS测试
+# =============================================================================
+
+### OPTIONS预检请求
+OPTIONS {{baseUrl}}/api/v1/auth/login
+Origin: https://example.com
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: Content-Type, Authorization
+
+# =============================================================================
+# 请求追踪测试
+# =============================================================================
+
+### 带自定义请求ID的请求
+GET {{baseUrl}}/health
+X-Request-ID: custom-request-id-12345
+
+### 检查请求ID是否在响应头中返回
+GET {{baseUrl}}/

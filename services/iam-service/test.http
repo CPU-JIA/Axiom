@@ -1,0 +1,164 @@
+# IAM Service API测试
+
+# 设置基础URL
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+### 健康检查
+GET {{baseUrl}}/health
+
+### 就绪检查  
+GET {{baseUrl}}/health/ready
+
+### 存活检查
+GET {{baseUrl}}/health/live
+
+### 用户注册
+POST {{baseUrl}}/api/v1/auth/register
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "password123",
+  "display_name": "测试用户",
+  "tenant_name": "测试租户"
+}
+
+### 用户登录
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### 刷新Token
+POST {{baseUrl}}/api/v1/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refresh_token": "your-refresh-token-here"
+}
+
+### 获取用户资料
+GET {{baseUrl}}/api/v1/users/profile
+Authorization: Bearer your-access-token-here
+
+### 更新用户资料
+PUT {{baseUrl}}/api/v1/users/profile
+Content-Type: {{contentType}}
+Authorization: Bearer your-access-token-here
+
+{
+  "display_name": "更新后的用户名",
+  "bio": "这是我的个人简介",
+  "phone": "13800138000"
+}
+
+### 修改密码
+POST {{baseUrl}}/api/v1/users/change-password
+Content-Type: {{contentType}}
+Authorization: Bearer your-access-token-here
+
+{
+  "current_password": "password123",
+  "new_password": "newpassword456"
+}
+
+### 忘记密码
+POST {{baseUrl}}/api/v1/auth/forgot-password
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com"
+}
+
+### 重置密码
+POST {{baseUrl}}/api/v1/auth/reset-password
+Content-Type: {{contentType}}
+
+{
+  "token": "reset-token-here",
+  "new_password": "newpassword789"
+}
+
+### 验证邮箱
+POST {{baseUrl}}/api/v1/auth/verify-email
+Content-Type: {{contentType}}
+
+{
+  "token": "verification-token-here"
+}
+
+### 重发验证邮件
+POST {{baseUrl}}/api/v1/auth/resend-verification
+Content-Type: {{contentType}}
+
+{
+  "email": "test@example.com"
+}
+
+### 设置MFA
+POST {{baseUrl}}/api/v1/mfa/setup
+Authorization: Bearer your-access-token-here
+
+### 验证MFA
+POST {{baseUrl}}/api/v1/mfa/verify
+Content-Type: {{contentType}}
+Authorization: Bearer your-access-token-here
+
+{
+  "code": "123456"
+}
+
+### 禁用MFA
+DELETE {{baseUrl}}/api/v1/mfa/disable
+Authorization: Bearer your-access-token-here
+
+### 获取备份码
+GET {{baseUrl}}/api/v1/mfa/backup-codes
+Authorization: Bearer your-access-token-here
+
+### 重新生成备份码
+POST {{baseUrl}}/api/v1/mfa/backup-codes/regenerate
+Authorization: Bearer your-access-token-here
+
+### 获取用户列表（管理员）
+GET {{baseUrl}}/api/v1/users?page=1&size=10&search=test
+Authorization: Bearer admin-access-token-here
+
+### 获取指定用户（管理员）
+GET {{baseUrl}}/api/v1/users/user-id-here
+Authorization: Bearer admin-access-token-here
+
+### 更新用户状态（管理员）
+PUT {{baseUrl}}/api/v1/users/user-id-here/status
+Content-Type: {{contentType}}
+Authorization: Bearer admin-access-token-here
+
+{
+  "status": "suspended"
+}
+
+### 删除用户（管理员）
+DELETE {{baseUrl}}/api/v1/users/user-id-here
+Authorization: Bearer admin-access-token-here
+
+### 内部Token验证
+POST {{baseUrl}}/api/v1/internal/introspect
+Content-Type: {{contentType}}
+X-Internal-Token: your-internal-secret
+
+{
+  "token": "access-token-to-verify"
+}
+
+### 切换租户
+POST {{baseUrl}}/api/v1/internal/switch-tenant
+Content-Type: {{contentType}}
+X-Internal-Token: your-internal-secret
+
+{
+  "tenant_id": "new-tenant-id"
+}
