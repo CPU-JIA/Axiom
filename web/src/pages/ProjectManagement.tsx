@@ -2,20 +2,16 @@ import React, { useState, useMemo } from 'react';
 import { 
   Plus, 
   Search, 
-  Filter, 
   MoreHorizontal, 
-  Calendar, 
-  Users, 
+  Calendar,
   GitBranch,
   Activity,
   CheckCircle,
-  Clock,
-  AlertTriangle,
-  Trash2,
   Edit,
   Eye,
   Star,
-  StarOff
+  StarOff,
+  Folder
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -47,7 +43,7 @@ const ProjectManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [, setShowCreateModal] = useState(false);
 
   // 模拟项目数据
   const projects: Project[] = [
@@ -434,7 +430,7 @@ const ProjectManagement: React.FC = () => {
       {filteredProjects.length === 0 && (
         <div className="text-center py-12">
           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FolderKanban className="w-12 h-12 text-gray-400" />
+            <Folder className="w-12 h-12 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">没有找到项目</h3>
           <p className="text-gray-500 mb-6">

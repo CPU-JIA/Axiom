@@ -44,11 +44,15 @@ export const useAuthStore = create<AuthStore>()(
           // 模拟API调用
           await new Promise(resolve => setTimeout(resolve, 1500));
           
+          // 获取演示凭据
+          const demoEmail = import.meta.env.VITE_DEMO_EMAIL || 'jia@euclid.com';
+          const demoPassword = import.meta.env.VITE_DEMO_PASSWORD || 'password123';
+          
           // 模拟登录成功
-          if (email === 'jia@euclid.com' && password === 'password123') {
+          if (email === demoEmail && password === demoPassword) {
             const mockUser: User = {
               id: '1',
-              email: 'jia@euclid.com',
+              email: demoEmail,
               name: 'JIA',
               role: 'admin',
               tenantId: 'tenant-1',

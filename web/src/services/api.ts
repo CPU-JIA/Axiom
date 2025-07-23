@@ -1,11 +1,11 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 
 // API 基础配置
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1';
 
 // 创建axios实例
-const apiClient: AxiosInstance = axios.create({
+const apiClient = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
   headers: {
@@ -15,7 +15,7 @@ const apiClient: AxiosInstance = axios.create({
 
 // 请求拦截器
 apiClient.interceptors.request.use(
-  (config) => {
+  (config: any) => {
     // 获取token并添加到请求头
     const token = useAuthStore.getState().token;
     if (token) {
@@ -28,7 +28,7 @@ apiClient.interceptors.request.use(
     console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   },
-  (error) => {
+  (error: any) => {
     console.error('❌ Request Error:', error);
     return Promise.reject(error);
   }
@@ -36,319 +36,177 @@ apiClient.interceptors.request.use(
 
 // 响应拦截器
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => {
+  (response: any) => {
     const duration = new Date().getTime() - response.config.metadata?.startTime?.getTime();
     console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} (${duration}ms)`);
     
     return response;
   },
-  (error) => {
+  (error: any) => {
     const duration = error.config?.metadata?.startTime ? 
       new Date().getTime() - error.config.metadata.startTime.getTime() : 0;
     
-    console.error(`❌ API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url} (${duration}ms)`, error.response?.data);
-    
-    // 处理认证错误
+    console.error(`❌ API Error: ${error.config?.method?.toUpperCase()} ${error.config?.url} (${duration}ms)`, {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data
+    });
+
+    // 处理401未授权错误
     if (error.response?.status === 401) {
-      // 清除认证状态并重定向到登录页
       useAuthStore.getState().logout();
       window.location.href = '/login';
     }
-    
-    // 处理其他HTTP错误
-    if (error.response?.status >= 500) {
-      // 服务器错误，可以显示用户友好的错误信息
-      console.error('Server error occurred');
-    }
-    
+
     return Promise.reject(error);
   }
 );
 
-// API响应类型定义
-export interface ApiResponse<T = any> {
-  code: number;
-  message: string;
-  data: T;
-  timestamp: string;
+// API响应类型
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
 }
 
-export interface PaginationResponse<T = any> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-// 通用API方法
-export class ApiService {
-  static async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+// API服务类
+class ApiService {
+  // GET请求
+  static async get<T = any>(url: string, config?: any): Promise<ApiResponse<T>> {
     const response = await apiClient.get(url, config);
     return response.data;
   }
 
-  static async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+  // POST请求
+  static async post<T = any>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
     const response = await apiClient.post(url, data, config);
     return response.data;
   }
 
-  static async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+  // PUT请求
+  static async put<T = any>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
     const response = await apiClient.put(url, data, config);
     return response.data;
   }
 
-  static async patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+  // PATCH请求
+  static async patch<T = any>(url: string, data?: any, config?: any): Promise<ApiResponse<T>> {
     const response = await apiClient.patch(url, data, config);
     return response.data;
   }
 
-  static async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<ApiResponse<T>> {
+  // DELETE请求
+  static async delete<T = any>(url: string, config?: any): Promise<ApiResponse<T>> {
     const response = await apiClient.delete(url, config);
     return response.data;
   }
 }
 
 // 用户相关API
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
+export const userApi = {
+  // 获取当前用户信息
+  getCurrentUser: () => ApiService.get('/user/profile'),
+  
+  // 更新用户信息
+  updateProfile: (data: any) => ApiService.put('/user/profile', data),
+  
+  // 获取用户列表
+  getUsers: (params?: any) => ApiService.get('/users', { params }),
+};
 
-export interface LoginResponse {
-  user: {
-    id: string;
-    email: string;
-    name: string;
-    avatar?: string;
-    role: string;
-    tenantId: string;
-  };
-  token: string;
-  refreshToken: string;
-  expiresIn: number;
-}
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  avatar?: string;
-  role: string;
-  tenantId: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export class AuthAPI {
-  static async login(data: LoginRequest): Promise<ApiResponse<LoginResponse>> {
-    return ApiService.post('/auth/login', data);
-  }
-
-  static async logout(): Promise<ApiResponse<void>> {
-    return ApiService.post('/auth/logout');
-  }
-
-  static async refresh(refreshToken: string): Promise<ApiResponse<LoginResponse>> {
-    return ApiService.post('/auth/refresh', { refreshToken });
-  }
-
-  static async getCurrentUser(): Promise<ApiResponse<User>> {
-    return ApiService.get('/auth/me');
-  }
-}
+// 认证相关API
+export const authApi = {
+  // 登录
+  login: (credentials: { email: string; password: string }) => 
+    ApiService.post('/auth/login', credentials),
+  
+  // 注册
+  register: (userData: any) => ApiService.post('/auth/register', userData),
+  
+  // 刷新token
+  refreshToken: () => ApiService.post('/auth/refresh'),
+  
+  // 登出
+  logout: () => ApiService.post('/auth/logout'),
+  
+  // 忘记密码
+  forgotPassword: (email: string) => ApiService.post('/auth/forgot-password', { email }),
+  
+  // 重置密码
+  resetPassword: (token: string, password: string) => 
+    ApiService.post('/auth/reset-password', { token, password }),
+};
 
 // 项目相关API
-export interface Project {
-  id: string;
-  name: string;
-  description: string;
-  status: 'planning' | 'active' | 'testing' | 'completed' | 'paused';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  progress: number;
-  startDate: string;
-  endDate: string;
-  members: ProjectMember[];
-  tasksTotal: number;
-  tasksCompleted: number;
-  isStarred: boolean;
-  lastActivity: string;
-  repository?: string;
-  tenantId: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ProjectMember {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  role: string;
-}
-
-export interface CreateProjectRequest {
-  name: string;
-  description: string;
-  priority: Project['priority'];
-  startDate: string;
-  endDate: string;
-  memberIds: string[];
-}
-
-export interface UpdateProjectRequest extends Partial<CreateProjectRequest> {
-  status?: Project['status'];
-  progress?: number;
-}
-
-export interface ProjectListParams {
-  page?: number;
-  pageSize?: number;
-  status?: string;
-  priority?: string;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-}
-
-export class ProjectAPI {
-  static async getProjects(params?: ProjectListParams): Promise<ApiResponse<PaginationResponse<Project>>> {
-    return ApiService.get('/projects', { params });
-  }
-
-  static async getProject(id: string): Promise<ApiResponse<Project>> {
-    return ApiService.get(`/projects/${id}`);
-  }
-
-  static async createProject(data: CreateProjectRequest): Promise<ApiResponse<Project>> {
-    return ApiService.post('/projects', data);
-  }
-
-  static async updateProject(id: string, data: UpdateProjectRequest): Promise<ApiResponse<Project>> {
-    return ApiService.put(`/projects/${id}`, data);
-  }
-
-  static async deleteProject(id: string): Promise<ApiResponse<void>> {
-    return ApiService.delete(`/projects/${id}`);
-  }
-
-  static async toggleStarProject(id: string): Promise<ApiResponse<Project>> {
-    return ApiService.post(`/projects/${id}/star`);
-  }
-}
+export const projectApi = {
+  // 获取项目列表
+  getProjects: (params?: any) => ApiService.get('/projects', { params }),
+  
+  // 获取项目详情
+  getProject: (id: string) => ApiService.get(`/projects/${id}`),
+  
+  // 创建项目
+  createProject: (data: any) => ApiService.post('/projects', data),
+  
+  // 更新项目
+  updateProject: (id: string, data: any) => ApiService.put(`/projects/${id}`, data),
+  
+  // 删除项目
+  deleteProject: (id: string) => ApiService.delete(`/projects/${id}`),
+  
+  // 获取项目成员
+  getProjectMembers: (id: string) => ApiService.get(`/projects/${id}/members`),
+  
+  // 添加项目成员
+  addProjectMember: (id: string, data: any) => ApiService.post(`/projects/${id}/members`, data),
+  
+  // 移除项目成员
+  removeProjectMember: (id: string, memberId: string) => 
+    ApiService.delete(`/projects/${id}/members/${memberId}`),
+};
 
 // 任务相关API
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  status: 'todo' | 'in_progress' | 'in_review' | 'done';
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  assigneeId?: string;
-  assignee?: ProjectMember;
-  projectId: string;
-  dueDate?: string;
-  tags: string[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export const taskApi = {
+  // 获取任务列表
+  getTasks: (params?: any) => ApiService.get('/tasks', { params }),
+  
+  // 获取任务详情
+  getTask: (id: string) => ApiService.get(`/tasks/${id}`),
+  
+  // 创建任务
+  createTask: (data: any) => ApiService.post('/tasks', data),
+  
+  // 更新任务
+  updateTask: (id: string, data: any) => ApiService.put(`/tasks/${id}`, data),
+  
+  // 删除任务
+  deleteTask: (id: string) => ApiService.delete(`/tasks/${id}`),
+  
+  // 获取任务评论
+  getTaskComments: (id: string) => ApiService.get(`/tasks/${id}/comments`),
+  
+  // 添加任务评论
+  addTaskComment: (id: string, data: any) => ApiService.post(`/tasks/${id}/comments`, data),
+  
+  // 上传任务附件
+  uploadTaskAttachment: (id: string, file: FormData) => 
+    ApiService.post(`/tasks/${id}/attachments`, file, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+};
 
-export interface CreateTaskRequest {
-  title: string;
-  description: string;
-  priority: Task['priority'];
-  projectId: string;
-  assigneeId?: string;
-  dueDate?: string;
-  tags: string[];
-}
+// 仪表板相关API
+export const dashboardApi = {
+  // 获取仪表板数据
+  getDashboardData: () => ApiService.get('/dashboard'),
+  
+  // 获取活动日志
+  getActivities: (params?: any) => ApiService.get('/dashboard/activities', { params }),
+  
+  // 获取统计数据
+  getStats: () => ApiService.get('/dashboard/stats'),
+};
 
-export interface UpdateTaskRequest extends Partial<CreateTaskRequest> {
-  status?: Task['status'];
-}
-
-export class TaskAPI {
-  static async getTasks(projectId?: string): Promise<ApiResponse<Task[]>> {
-    const params = projectId ? { projectId } : {};
-    return ApiService.get('/tasks', { params });
-  }
-
-  static async getTask(id: string): Promise<ApiResponse<Task>> {
-    return ApiService.get(`/tasks/${id}`);
-  }
-
-  static async createTask(data: CreateTaskRequest): Promise<ApiResponse<Task>> {
-    return ApiService.post('/tasks', data);
-  }
-
-  static async updateTask(id: string, data: UpdateTaskRequest): Promise<ApiResponse<Task>> {
-    return ApiService.put(`/tasks/${id}`, data);
-  }
-
-  static async deleteTask(id: string): Promise<ApiResponse<void>> {
-    return ApiService.delete(`/tasks/${id}`);
-  }
-}
-
-// 租户相关API
-export interface Tenant {
-  id: string;
-  name: string;
-  domain: string;
-  logo?: string;
-  settings: Record<string, any>;
-  subscriptionPlan: string;
-  subscriptionStatus: 'active' | 'inactive' | 'trial' | 'expired';
-  memberCount: number;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export class TenantAPI {
-  static async getCurrentTenant(): Promise<ApiResponse<Tenant>> {
-    return ApiService.get('/tenants/current');
-  }
-
-  static async updateTenant(data: Partial<Tenant>): Promise<ApiResponse<Tenant>> {
-    return ApiService.put('/tenants/current', data);
-  }
-
-  static async getTenantMembers(): Promise<ApiResponse<User[]>> {
-    return ApiService.get('/tenants/current/members');
-  }
-}
-
-// 统计数据API
-export interface DashboardStats {
-  totalProjects: number;
-  activeProjects: number;
-  completedTasks: number;
-  totalTasks: number;
-  teamMembers: number;
-  completionRate: number;
-}
-
-export interface ActivityItem {
-  id: string;
-  user: string;
-  action: string;
-  target: string;
-  time: string;
-  type: 'commit' | 'task' | 'deployment' | 'comment';
-}
-
-export class DashboardAPI {
-  static async getStats(): Promise<ApiResponse<DashboardStats>> {
-    return ApiService.get('/dashboard/stats');
-  }
-
-  static async getRecentActivities(limit?: number): Promise<ApiResponse<ActivityItem[]>> {
-    const params = limit ? { limit } : {};
-    return ApiService.get('/dashboard/activities', { params });
-  }
-}
-
-// 导出默认的API客户端
-export default apiClient;
+// 导出默认API服务
+export default ApiService;

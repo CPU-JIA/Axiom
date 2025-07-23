@@ -1,6 +1,6 @@
 import React from 'react';
-import { motion, Variants } from 'framer-motion';
-import { cn } from '../utils/cn';
+import { motion, Variants, AnimatePresence } from 'framer-motion';
+import { cn } from '../../utils/cn';
 
 // 动画变体定义
 const fadeInUp: Variants = {

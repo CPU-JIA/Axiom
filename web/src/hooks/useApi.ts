@@ -102,14 +102,13 @@ export const useCreateProject = () => {
   
   return useMutation({
     mutationFn: (data: CreateProjectRequest) => ProjectAPI.createProject(data),
-    onSuccess: (response) => {
+    onSuccess: () => {
       // 刷新项目列表
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       // 刷新仪表盘统计
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardStats });
       
       toast.success('项目创建成功！');
-      console.log('Project created:', response.data);
     },
     onError: (error: any) => {
       console.error('Create project failed:', error);
@@ -124,7 +123,7 @@ export const useUpdateProject = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateProjectRequest }) => 
       ProjectAPI.updateProject(id, data),
-    onSuccess: (response, variables) => {
+    onSuccess: (_, variables) => {
       // 更新特定项目缓存
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.project(variables.id) });
       // 刷新项目列表
@@ -208,7 +207,7 @@ export const useCreateTask = () => {
   
   return useMutation({
     mutationFn: (data: CreateTaskRequest) => TaskAPI.createTask(data),
-    onSuccess: (response, variables) => {
+    onSuccess: (_, variables) => {
       // 刷新任务列表
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       // 更新特定项目的任务
@@ -237,7 +236,7 @@ export const useUpdateTask = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateTaskRequest }) => 
       TaskAPI.updateTask(id, data),
-    onSuccess: (response, variables) => {
+    onSuccess: (_, variables) => {
       // 更新特定任务缓存
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.task(variables.id) });
       // 刷新任务列表

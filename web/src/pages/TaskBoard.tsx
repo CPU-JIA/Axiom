@@ -6,17 +6,16 @@ import {
   Filter, 
   Calendar, 
   Clock, 
-  Flag,
   MessageCircle,
   Paperclip,
   MoreHorizontal,
-  Eye,
-  Users,
-  Zap
+  Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, Button, Input, PageHeader, animations } from '../components/ui';
-import { cn, formatRelativeTime } from '../utils/cn';
+import { Card, Button, Input, PageHeader } from '../components/ui';
+import { animations } from '../components/ui';
+import { cn } from '../utils/cn';
+import { formatRelativeTime } from '../utils/cn';
 
 // 任务数据类型定义
 interface Task {
@@ -198,19 +197,27 @@ const TaskBoard: React.FC = () => {
     
     return (
       <Draggable draggableId={task.id} index={index}>
-        {(provided, snapshot) => (
-          <motion.div
-            ref={provided.innerRef}
-            {...provided.draggableProps}
-            {...provided.dragHandleProps}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className={cn(
+        {(provided, snapshot) => {
+          // 分离的motion props
+          const motionProps = {
+            initial: { opacity: 0, y: 20 },
+            animate: { opacity: 1, y: 0 },
+            transition: { delay: index * 0.05 },
+            className: cn(
               'group mb-3 transition-all duration-200',
               snapshot.isDragging && 'rotate-3 scale-105 shadow-2xl'
-            )}
-          >
+            )
+          };
+          
+          return (
+            <motion.div
+              {...motionProps}
+            >
+              <div
+                ref={provided.innerRef}
+                {...provided.draggableProps}
+                {...provided.dragHandleProps}
+              >
             <Card className={cn(
               'p-4 hover:shadow-medium border-l-4 relative',
               task.priority === 'critical' && 'border-l-red-500',
@@ -321,8 +328,10 @@ const TaskBoard: React.FC = () => {
                 )}
               </div>
             </Card>
-          </motion.div>
-        )}
+              </div>
+            </motion.div>
+          );
+        }}
       </Draggable>
     );
   };
@@ -489,7 +498,7 @@ const TaskBoard: React.FC = () => {
         transition={{ delay: 0.3 }}
         className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6"
       >
-        {columns.map((column, index) => {
+        {columns.map((column) => {
           const count = tasksByStatus[column.status]?.length || 0;
           return (
             <Card key={column.id} className="p-4 text-center">

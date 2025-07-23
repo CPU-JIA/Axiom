@@ -9,7 +9,6 @@ import {
   Search, 
   Plus,
   BarChart3,
-  Calendar,
   Clock,
   TrendingUp,
   Activity,

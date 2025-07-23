@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, Lock, Mail, ArrowRight, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useLogin } from '../hooks/useApi';
 import { useAuthStore } from '../stores/authStore';
 
 interface LoginFormData {
@@ -13,8 +12,7 @@ interface LoginFormData {
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { setUser, setToken } = useAuthStore();
-  const loginMutation = useLogin();
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -61,21 +59,31 @@ const Login: React.FC = () => {
     
     if (!validateForm()) return;
     
+    setIsLoading(true);
+    
     try {
-      const response = await loginMutation.mutateAsync({
-        email: formData.email,
-        password: formData.password
-      });
+      // 直接使用 authStore 的登录方法
+      const { login } = useAuthStore.getState();
+      const success = await login(formData.email, formData.password);
       
-      // 更新认证状态
-      setUser(response.data.user);
-      setToken(response.data.token);
-      
-      // 导航到仪表盘
-      navigate('/dashboard', { replace: true });
+      if (success) {
+        // 导航到仪表盘
+        navigate('/dashboard', { replace: true });
+      } else {
+        // 显示错误信息
+        setErrors({ 
+          email: '邮箱或密码错误，请重试',
+          password: '邮箱或密码错误，请重试'
+        });
+      }
     } catch (error) {
-      // 错误已经在mutation中处理了
       console.error('Login failed:', error);
+      setErrors({ 
+        email: '登录失败，请重试',
+        password: '登录失败，请重试'
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -150,7 +158,25 @@ const Login: React.FC = () => {
             
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-2">欢迎回来</h2>
-              <p className="text-gray-600 mb-8">请登录您的账户以继续使用</p>
+              <p className="text-gray-600 mb-4">请登录您的账户以继续使用</p>
+              
+              {/* 演示登录信息 */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">i</span>
+                    </div>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-blue-800">演示账户</h3>
+                    <div className="mt-1 text-sm text-blue-700">
+                      <p><strong>邮箱：</strong>jia@euclid.com</p>
+                      <p><strong>密码：</strong>password123</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -255,11 +281,11 @@ const Login: React.FC = () => {
               {/* 登录按钮 */}
               <motion.button
                 type="submit"
-                disabled={loginMutation.isPending}
+                disabled={isLoading}
                 whileTap={{ scale: 0.98 }}
                 className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
               >
-                {loginMutation.isPending ? (
+                {isLoading ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     登录中...
